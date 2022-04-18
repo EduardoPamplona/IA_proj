@@ -22,7 +22,10 @@ class NumbrixState:
 
     def __lt__(self, other):
         return self.id < other.id 
-        
+
+    def get_board(self):
+        return self.board   
+
     # TODO: outros metodos da classe
 
 
@@ -31,12 +34,17 @@ class Board:
 
     def __init__(self, size: int, initial_positions):
         """ O construtor especifica o estado inicial. """
+        self.lowest_path_number = None
+        self.highest_path_number = None
         self.size = size
         self.positions = initial_positions
 
     def get_number(self, row: int, col: int):
         """ Devolve o valor na respetiva posicao do tabuleiro. """
         return self.positions[row][col]
+
+    def set_number(self, row: int, col: int, num: int):
+        self.positions[row][col] = num    
     
     def adjacent_vertical_numbers(self, row: int, col: int):
         """ Devolve os valores imediatamente abaixo e acima, 
@@ -51,7 +59,7 @@ class Board:
             down = self.get_number(row + 1, col)
         return (up, down)
     
-    def adjacent_horizontal_numbers(self, row: int, col: int) -> (int, int):
+    def adjacent_horizontal_numbers(self, row: int, col: int):
         """ Devolve os valores imediatamente a esquerda e a direita, 
         respectivamente. """
         if col == 0:
@@ -63,6 +71,76 @@ class Board:
         else:
             right = self.get_number(row, col + 1)
         return (left, right)
+
+    def set_positions(self, positions) {
+        self.positions = positions
+    }
+
+    def get_lowest_path_number(self) {
+        return lowest_path_number
+    }
+    
+    def get_highest_path_number(self) {
+        return highest_path_number
+    }
+
+    def set_lowest_path_number(self, row: int, col: int, num: int) {
+        self.lowest_path_number = (row, col, num)
+    }
+
+    def set_highest_path_number(self, row: int, col: int, num: int) {
+        self.highest_path_number = (row, col, num)
+    }
+
+    def set_initial_lowest_path_number(self) {
+        lowest = (None, None, self.size * self.size + 1)
+
+        for row in range(size):
+            for col in range(size):
+                current_num = get_number(row, col)
+                if current_num != 0 and current_num <= lowest:
+                    lowest = (row, col, current_num)
+                    
+        self.lowest_path_number = lowest
+    }
+
+    def set_initial_highest_path_number(self) {
+        highest = self.get_lowest_path_number()
+        
+        while True:
+            (up, down) = adjacent_vertical_numbers(highest[0], highest[1])
+            (left, right) = adjacent_horizontal_numbers(highest[0], highest[1])
+            if up == highest[2] + 1:
+                highest = (highest[0] - 1, highest[1], up)
+            else if down == highest[2] + 1:
+                highest = (highest[0] + 1, highest[1], down)
+            else if left == highest[2] + 1:
+                highest = (highest[0], highest[1] - 1, left)
+            else if right == highest[2] + 1:
+                highest = (highest[0], highest[1] + 1, right)
+            else:
+                break
+
+        self.highest_path_number = highest
+    }
+
+    def check_set_straight_sequence(self, row: int, col: int) {
+        root_num = (row, col, self.get_number(row, col))
+
+        (up, down) = adjacent_vertical_numbers(root_num[0], root_num[1])
+        (left, right) = adjacent_horizontal_numbers(root_num[0], root_num[1])
+
+        for direction in range(4):
+            if direction == 0: to_compare = up
+            else if direction == 1: to_compare = down
+            else if direction == 2: to_compare = left
+            else: to_compare = right
+
+            current_num = root_num
+            candidate_positions = self.positions
+            incrementer = 1
+            
+            
     
     @staticmethod    
     def parse_instance(filename: str):
@@ -91,22 +169,55 @@ class Board:
 class Numbrix(Problem):
     def __init__(self, board: Board):
         """ O construtor especifica o estado inicial. """
-        # TODO
+        board.set_initial_lowest_path_number()
+        board.set_initial_highest_path_number()
+        self.initial_state = NumbrixState(board)
         pass
 
     def actions(self, state: NumbrixState):
-        """ Retorna uma lista de acoes que podem ser executadas a
-        partir do estado passado como argumento. """
-        # TODO
-        pass
+        board = NumbrixState.get_board()
+        lowest = board.get_lowest_path_number()
+        highest = board.get_highest_path_number()
+        actions = ()
+
+        if lowest > 1:
+            (up, down) = adjacent_vertical_numbers(lowest[0], lowest[1])
+            (left, right) = adjacent_horizontal_numbers(lowest[0], lowest[1])
+            if up == 0:
+                actions += ((lowest[0] - 1, lowest[1], lowest[2] - 1), )
+            if down == 0:   
+                actions += ((lowest[0] + 1, lowest[1], lowest[2] - 1), )
+            if left == 0:
+                actions += ((lowest[0], lowest[1] - 1, lowest[2] - 1), )
+            if right == 0:
+                actions += ((lowest[0], lowest[1] + 1, lowest[2] - 1), )    
+        else:
+            (up, down) = adjacent_vertical_numbers(highest[0], highest[1])
+            (left, right) = adjacent_horizontal_numbers(highest[0], highest[1])
+            if up == 0:
+                actions += ((highest[0] - 1, highest[1], highest[2] + 1), )
+            if down == 0:   
+                actions += ((highest[0] + 1, highest[1], highest[2] + 1), )
+            if left == 0:
+                actions += ((highest[0], highest[1] - 1, highest[2] + 1), )
+            if right == 0:
+                actions += ((highest[0], highest[1] + 1, highest[2] + 1), )
+
+        return actions
 
     def result(self, state: NumbrixState, action):
         """ Retorna o estado resultante de executar a 'action' sobre
         'state' passado como argumento. A acoo a executar deve ser uma
         das presentes na lista obtida pela execucao de 
         self.actions(state). """
-        # TODO
-        pass
+        new_board = state.get_board()
+        new_board.set_number(action[0], action[1], action[2])
+
+        
+        
+        new_state = NumbrixState(new_board)
+
+        return new_state
 
     def goal_test(self, state: NumbrixState):
         """ Retorna True se e so se o estado passado como argumento e
