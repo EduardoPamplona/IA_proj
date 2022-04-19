@@ -72,76 +72,129 @@ class Board:
             right = self.get_number(row, col + 1)
         return (left, right)
 
-    def set_positions(self, positions) {
+    def set_positions(self, positions):
         self.positions = positions
-    }
 
-    def get_lowest_path_number(self) {
-        return lowest_path_number
-    }
+    def get_lowest_path_number(self):
+        return self.lowest_path_number
     
-    def get_highest_path_number(self) {
-        return highest_path_number
-    }
+    def get_highest_path_number(self):
+        return self.highest_path_number
 
-    def set_lowest_path_number(self, row: int, col: int, num: int) {
+    def set_lowest_path_number(self, row: int, col: int, num: int):
         self.lowest_path_number = (row, col, num)
-    }
 
-    def set_highest_path_number(self, row: int, col: int, num: int) {
+    def set_highest_path_number(self, row: int, col: int, num: int):
         self.highest_path_number = (row, col, num)
-    }
 
-    def set_initial_lowest_path_number(self) {
+    def set_initial_lowest_path_number(self):
         lowest = (None, None, self.size * self.size + 1)
 
-        for row in range(size):
-            for col in range(size):
-                current_num = get_number(row, col)
+        for row in range(self.size):
+            for col in range(self.size):
+                current_num = self.get_number(row, col)
                 if current_num != 0 and current_num <= lowest:
                     lowest = (row, col, current_num)
                     
         self.lowest_path_number = lowest
-    }
 
-    def set_initial_highest_path_number(self) {
+    def set_initial_highest_path_number(self):
         highest = self.get_lowest_path_number()
         
         while True:
-            (up, down) = adjacent_vertical_numbers(highest[0], highest[1])
-            (left, right) = adjacent_horizontal_numbers(highest[0], highest[1])
+            (up, down) = self.adjacent_vertical_numbers(highest[0], highest[1])
+            (left, right) = self.adjacent_horizontal_numbers(highest[0], highest[1])
             if up == highest[2] + 1:
                 highest = (highest[0] - 1, highest[1], up)
-            else if down == highest[2] + 1:
+            elif down == highest[2] + 1:
                 highest = (highest[0] + 1, highest[1], down)
-            else if left == highest[2] + 1:
+            elif left == highest[2] + 1:
                 highest = (highest[0], highest[1] - 1, left)
-            else if right == highest[2] + 1:
+            elif right == highest[2] + 1:
                 highest = (highest[0], highest[1] + 1, right)
             else:
                 break
 
         self.highest_path_number = highest
-    }
 
-    def check_set_straight_sequence(self, row: int, col: int) {
+    def check_set_straight_sequence(self, row: int, col: int):
         root_num = (row, col, self.get_number(row, col))
 
-        (up, down) = adjacent_vertical_numbers(root_num[0], root_num[1])
-        (left, right) = adjacent_horizontal_numbers(root_num[0], root_num[1])
+        (up, down) = self.adjacent_vertical_numbers(root_num[0], root_num[1])
+        (left, right) = self.adjacent_horizontal_numbers(root_num[0], root_num[1])
+            
+        up_pos = (row-1, col, up)
+        down_pos = (row+1, col, down)
+        left_pos = (row, col-1, left)
+        right_pos = (row, col+1, right)
 
-        for direction in range(4):
-            if direction == 0: to_compare = up
-            else if direction == 1: to_compare = down
-            else if direction == 2: to_compare = left
-            else: to_compare = right
+        direction_to_check = 0
 
-            current_num = root_num
+        while True:
             candidate_positions = self.positions
             incrementer = 1
+            while direction_to_check == 0 and up_pos[2] != None:
+                if up_pos[2] == 0:
+                    # the position is filled with the next number in the sequence
+                    candidate_positions[up_pos[0]][up_pos[1]] = root_num[2] + incrementer
+
+                    # up_pos is updated to the position above
+                    up_pos = (up_pos[0]-1, up_pos[1], self.adjacent_vertical_numbers(up_pos[0], up_pos[1])[0])
+
+                    incrementer += 1
+                    
+                elif up_pos[2] == root_num[2] + incrementer:
+                    # the positions of this board are now updated to the candidate_positions because a 
+                    # straight sequence was found
+                    self.set_positions(candidate_positions)
+                    # the hisghest_path_number is now the last number in the straight sequence
+                    self.set_highest_path_number(up_pos[0], up_pos[1], up_pos[2])
+                    return
+                else:
+                    break 
             
+            while direction_to_check == 1 and down_pos[2] != None:
+                if down_pos[2] == 0:
+                    candidate_positions[down_pos[0]][down_pos[1]] = root_num[2] + incrementer
+                    down_pos = (down_pos[0]+1, down_pos[1], self.adjacent_vertical_numbers(down_pos[0], down_pos[1])[1])
+                    incrementer += 1
+                elif down_pos[2] == root_num[2] + incrementer:
+                    self.set_positions(candidate_positions)
+                    self.set_highest_path_number(down_pos[0], down_pos[1], down_pos[2])
+                    return
+                else:
+                    break 
+
+            while direction_to_check == 2 and left_pos[2] != None:
+                if left_pos[2] == 0:
+                    candidate_positions[left_pos[0]][left_pos[1]] = root_num[2] + incrementer
+                    left_pos = (left_pos[0], left_pos[1]-1, self.adjacent_horizontal_numbers(left_pos[0], left_pos[1])[0])
+                    incrementer += 1
+                elif left_pos[2] == root_num[2] + incrementer:
+                    self.set_positions(candidate_positions)
+                    self.set_highest_path_number(left_pos[0], left_pos[1], left_pos[2])
+                    return
+                else:
+                    break 
             
-    
+            while direction_to_check == 3 and right_pos[2] != None:
+                if right_pos[2] == 0:
+                    candidate_positions[right_pos[0]][right_pos[1]] = root_num[2] + incrementer
+                    right_pos = (right_pos[0], right_pos[1]+1, self.adjacent_horizontal_numbers(right_pos[0], right_pos[1])[1])
+                    incrementer += 1
+                    
+                elif right_pos[2] == root_num[2] + incrementer:
+                    self.set_positions(candidate_positions)
+                    self.set_highest_path_number(right_pos[0], right_pos[1], right_pos[2])
+                    return
+                else:
+                    break 
+                    
+            direction_to_check += 1
+
+            if direction_to_check == 4:
+                break
+
     @staticmethod    
     def parse_instance(filename: str):
         """ Le o ficheiro cujo caminho e passado como argumento e retorna
@@ -163,7 +216,6 @@ class Board:
 
         return Board(size, initial_positions)
 
-
     # TODO: outros metodos da classe
 
 class Numbrix(Problem):
@@ -172,7 +224,6 @@ class Numbrix(Problem):
         board.set_initial_lowest_path_number()
         board.set_initial_highest_path_number()
         self.initial_state = NumbrixState(board)
-        pass
 
     def actions(self, state: NumbrixState):
         board = NumbrixState.get_board()
@@ -181,8 +232,8 @@ class Numbrix(Problem):
         actions = ()
 
         if lowest > 1:
-            (up, down) = adjacent_vertical_numbers(lowest[0], lowest[1])
-            (left, right) = adjacent_horizontal_numbers(lowest[0], lowest[1])
+            (up, down) = board.adjacent_vertical_numbers(lowest[0], lowest[1])
+            (left, right) = board.adjacent_horizontal_numbers(lowest[0], lowest[1])
             if up == 0:
                 actions += ((lowest[0] - 1, lowest[1], lowest[2] - 1), )
             if down == 0:   
@@ -192,8 +243,8 @@ class Numbrix(Problem):
             if right == 0:
                 actions += ((lowest[0], lowest[1] + 1, lowest[2] - 1), )    
         else:
-            (up, down) = adjacent_vertical_numbers(highest[0], highest[1])
-            (left, right) = adjacent_horizontal_numbers(highest[0], highest[1])
+            (up, down) = board.adjacent_vertical_numbers(highest[0], highest[1])
+            (left, right) = board.adjacent_horizontal_numbers(highest[0], highest[1])
             if up == 0:
                 actions += ((highest[0] - 1, highest[1], highest[2] + 1), )
             if down == 0:   
@@ -211,9 +262,14 @@ class Numbrix(Problem):
         das presentes na lista obtida pela execucao de 
         self.actions(state). """
         new_board = state.get_board()
+
+        # sets the number in the board
         new_board.set_number(action[0], action[1], action[2])
 
-        
+        # checks if there is a tright line in any of the four directions
+        # if there is, it will update the new_board
+        # if not, nothing is done
+        new_board.check_set_straight_sequence(action[0], action[1])
         
         new_state = NumbrixState(new_board)
 
