@@ -44,7 +44,6 @@ class Board:
         return self.positions[row][col]
 
     def set_number(self, row: int, col: int, num: int):
-        positions = self.positions
         self.positions[row][col] = num    
     
     def adjacent_vertical_numbers(self, row: int, col: int):
@@ -118,8 +117,31 @@ class Board:
 
         self.highest_path_number = highest
 
+    def check_possible_path(self, row: int, col: int):
+        root_num = (row, col, self.get_number(row, col))
+        highest = root_num
+
+        while (True):
+            (up, down) = self.adjacent_vertical_numbers(root_num[0], root_num[1])
+            (left, right) = self.adjacent_horizontal_numbers(root_num[0], root_num[1])
+
+            if up == root_num[2] + 1:
+                root_num = (row - 1, col, up)
+            elif down == root_num[2] + 1: 
+                root_num = (row + 1, col, down)
+            elif left == root_num[2] + 1:
+                root_num = (row, col - 1, left)
+            elif right == root_num[2] + 1:
+                root_num = (row, col + 1, right)
+            else:
+                if root_num == highest:
+                    return False
+                self.set_highest_path_number(root_num)
+                return True        
+
     def check_set_straight_sequence(self, row: int, col: int):
         root_num = (row, col, self.get_number(row, col))
+        initial_highest = root_num
 
         (up, down) = self.adjacent_vertical_numbers(root_num[0], root_num[1])
         (left, right) = self.adjacent_horizontal_numbers(root_num[0], root_num[1])
@@ -150,7 +172,7 @@ class Board:
                     self.set_positions(candidate_positions)
                     # the hisghest_path_number is now the last number in the straight sequence
                     self.set_highest_path_number(up_pos[0], up_pos[1], up_pos[2])
-                    return
+                    break
                 else:
                     break 
             
@@ -162,7 +184,7 @@ class Board:
                 elif down_pos[2] == root_num[2] + incrementer:
                     self.set_positions(candidate_positions)
                     self.set_highest_path_number(down_pos[0], down_pos[1], down_pos[2])
-                    return
+                    break
                 else:
                     break 
 
@@ -174,7 +196,7 @@ class Board:
                 elif left_pos[2] == root_num[2] + incrementer:
                     self.set_positions(candidate_positions)
                     self.set_highest_path_number(left_pos[0], left_pos[1], left_pos[2])
-                    return
+                    break
                 else:
                     break 
             
@@ -187,14 +209,26 @@ class Board:
                 elif right_pos[2] == root_num[2] + incrementer:
                     self.set_positions(candidate_positions)
                     self.set_highest_path_number(right_pos[0], right_pos[1], right_pos[2])
-                    return
+                    break
                 else:
                     break 
                     
             direction_to_check += 1
 
             if direction_to_check == 4:
-                break
+                if initial_highest == self.get_highest_path_number():
+                    return False
+                return True    
+
+    def check_possible_filling(self, root_num: tuple):
+        
+        self.set_highest_path_number(root_num)
+        changed_cpp = True
+        changed_css = True
+
+        while changed_cpp or changed_css:
+            changed_cpp = self.check_possible_path(root_num[0], root_num[1])
+            changed_css = self.check_set_straight_sequence(root_num[0], root_num[1])
 
     @staticmethod    
     def parse_instance(filename: str):
@@ -210,7 +244,7 @@ class Board:
         row = []
         for item in data[2::]:
             if item != '\t' and item != '\n':
-                row.append(item)
+                row.append(int(item))
             if item == '\n':
                 initial_positions.append(row)
                 row = []
@@ -266,11 +300,12 @@ class Numbrix(Problem):
 
         # sets the number in the board
         new_board.set_number(action[0], action[1], action[2])
+        new_board.check_possible_path()
 
         # checks if there is a tright line in any of the four directions
         # if there is, it will update the new_board
         # if not, nothing is done
-        new_board.check_set_straight_sequence(action[0], action[1])
+        new_board.check_possible_filling(action)
         
         new_state = NumbrixState(new_board)
 
