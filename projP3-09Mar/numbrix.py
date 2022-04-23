@@ -44,6 +44,7 @@ class Board:
         return self.positions[row][col]
 
     def set_number(self, row: int, col: int, num: int):
+        positions = self.positions
         self.positions[row][col] = num    
     
     def adjacent_vertical_numbers(self, row: int, col: int):
@@ -93,7 +94,7 @@ class Board:
         for row in range(self.size):
             for col in range(self.size):
                 current_num = self.get_number(row, col)
-                if current_num != 0 and current_num <= lowest:
+                if current_num != 0 and current_num <= lowest[2]:
                     lowest = (row, col, current_num)
                     
         self.lowest_path_number = lowest
@@ -223,15 +224,15 @@ class Numbrix(Problem):
         """ O construtor especifica o estado inicial. """
         board.set_initial_lowest_path_number()
         board.set_initial_highest_path_number()
-        self.initial_state = NumbrixState(board)
+        self.initial = NumbrixState(board)
 
     def actions(self, state: NumbrixState):
-        board = NumbrixState.get_board()
+        board = state.get_board()
         lowest = board.get_lowest_path_number()
         highest = board.get_highest_path_number()
         actions = ()
 
-        if lowest > 1:
+        if lowest[2] > 1:
             (up, down) = board.adjacent_vertical_numbers(lowest[0], lowest[1])
             (left, right) = board.adjacent_horizontal_numbers(lowest[0], lowest[1])
             if up == 0:
@@ -279,8 +280,29 @@ class Numbrix(Problem):
         """ Retorna True se e so se o estado passado como argumento e
         um estado objetivo. Deve verificar se todas as posicoes do tabuleiro 
         estao preenchidas com uma sequencia de numeros adjacentes. """
-        # TODO
-        pass
+
+        board = state.get_board()
+        current_pos = board.get_lowest_path_number()
+        if current_pos[2] != 1:
+            return False
+        else:
+            while True:
+                (up, down) = board.adjacent_vertical_numbers(current_pos[0], current_pos[1])
+                (left, right) = board.adjacent_horizontal_numbers(current_pos[0], current_pos[1])
+
+                if up == current_pos[2]+1:
+                    current_pos = (current_pos[0]-1, current_pos[0], current_pos[2]+1)
+                elif down == current_pos[2]+1:
+                    current_pos = (current_pos[0]+1, current_pos[0], current_pos[2]+1)
+                elif left == current_pos[2]+1:
+                    current_pos = (current_pos[0], current_pos[0]-1, current_pos[2]+1)
+                elif right == current_pos[2]+1:
+                    current_pos = (current_pos[0], current_pos[0]+1, current_pos[2]+1)
+                else:
+                    return False
+                if current_pos[2] == board.get_size() * board.get_size():
+                    return True
+                
 
     def h(self, node: Node):
         """ Funcao heuristica utilizada para a procura A*. """
@@ -293,10 +315,19 @@ class Numbrix(Problem):
 if __name__ == "__main__":
     # TODO:
     # Ler o ficheiro de input de sys.argv[1],
+
     inputFile = sys.argv[1]
 
     board = Board.parse_instance(inputFile)
-    print(board.adjacent_vertical_numbers(1, 2))
+
+    print(board.positions[0][1])
+    
+    problem = Numbrix(board)
+
+    goal_node = breadth_first_tree_search(problem)
+
+    print("Is goal?", problem.goal_test(goal_node.state))
+    print("Solution:\n", goal_node.state.board.to_string(), sep="")
 
     # Usar uma tecnica de procura para resolver a instancia,
     # Retirar a solucao a partir do no resultante,
