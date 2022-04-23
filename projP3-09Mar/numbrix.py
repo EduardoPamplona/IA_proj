@@ -206,14 +206,14 @@ class Board:
 
         size = int(data[0])
 
-        initial_positions = ()
-        row = ()
+        initial_positions = []
+        row = []
         for item in data[2::]:
             if item != '\t' and item != '\n':
-                row += (int(item), )
+                row.append(item)
             if item == '\n':
-                initial_positions += (row, )
-                row = ()
+                initial_positions.append(row)
+                row = []
 
         return Board(size, initial_positions)
 
