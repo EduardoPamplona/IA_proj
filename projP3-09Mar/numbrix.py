@@ -1,3 +1,8 @@
+import copy
+import sys
+from search import Problem, Node, depth_first_tree_search, breadth_first_tree_search, astar_search, recursive_best_first_search
+import time
+
 # numbrix.py: Template para implementacao do projeto de Inteligencia Artificial 2021/2022.
 # Devem alterar as classes e funcoes neste ficheiro de acordo com as instrucoes do enunciado.
 # Alem das funcoes e classes ja definidas, podem acrescentar outras que considerem pertinentes.
@@ -5,12 +10,6 @@
 # Grupo 26:
 # 96858 Eduardo Duarte Silva Rangel Pamplona
 # 96885 Jose Maria de Oliveira Soares Bonneville Franco
-
-import string
-import sys
-import this
-from search import Problem, Node, astar_search, breadth_first_tree_search, depth_first_tree_search, greedy_search, recursive_best_first_search
-
 
 class NumbrixState:
     state_id = 0
@@ -24,9 +23,7 @@ class NumbrixState:
         return self.id < other.id 
 
     def get_board(self):
-        return self.board   
-
-    # TODO: outros metodos da classe
+        return self.board
 
 
 class Board:
@@ -38,6 +35,10 @@ class Board:
         self.highest_path_number = None
         self.size = size
         self.positions = initial_positions
+        self.manhattan_list = []
+
+    def get_size(self):
+        return self.size
 
     def get_number(self, row: int, col: int):
         """ Devolve o valor na respetiva posicao do tabuleiro. """
@@ -85,6 +86,9 @@ class Board:
         self.lowest_path_number = (row, col, num)
 
     def set_highest_path_number(self, row: int, col: int, num: int):
+        for tup in self.manhattan_list:
+            if num >= tup[2]:
+                self.manhattan_list.remove(tup)
         self.highest_path_number = (row, col, num)
 
     def set_initial_lowest_path_number(self):
@@ -93,50 +97,46 @@ class Board:
         for row in range(self.size):
             for col in range(self.size):
                 current_num = self.get_number(row, col)
-                if current_num != 0 and current_num <= lowest[2]:
-                    lowest = (row, col, current_num)
+                if current_num != 0:
+                    self.manhattan_list.append((row, col, current_num),)
+                    if current_num <= lowest[2]:
+                        lowest = (row, col, current_num)
+
+        self.manhattan_list.sort(key = lambda x: x[2])                    
                     
         self.lowest_path_number = lowest
 
     def set_initial_highest_path_number(self):
-        highest = self.get_lowest_path_number()
-        
-        while True:
-            (up, down) = self.adjacent_vertical_numbers(highest[0], highest[1])
-            (left, right) = self.adjacent_horizontal_numbers(highest[0], highest[1])
-            if up == highest[2] + 1:
-                highest = (highest[0] - 1, highest[1], up)
-            elif down == highest[2] + 1:
-                highest = (highest[0] + 1, highest[1], down)
-            elif left == highest[2] + 1:
-                highest = (highest[0], highest[1] - 1, left)
-            elif right == highest[2] + 1:
-                highest = (highest[0], highest[1] + 1, right)
-            else:
-                break
+        self.set_highest_path_number(self.get_lowest_path_number()[0], self.get_lowest_path_number()[1], self.get_lowest_path_number()[2])
 
-        self.highest_path_number = highest
+        changed_css = True
+
+        while changed_css:
+            changed_css = self.check_set_straight_sequence(self.get_highest_path_number()[0], self.get_highest_path_number()[1])
 
     def check_possible_path(self, row: int, col: int):
         root_num = (row, col, self.get_number(row, col))
-        highest = root_num
+        initial_highest = root_num
 
         while (True):
             (up, down) = self.adjacent_vertical_numbers(root_num[0], root_num[1])
             (left, right) = self.adjacent_horizontal_numbers(root_num[0], root_num[1])
 
             if up == root_num[2] + 1:
-                root_num = (row - 1, col, up)
+                root_num = (root_num[0] - 1, root_num[1], up)
+                self.set_highest_path_number(root_num[0], root_num[1], root_num[2])
             elif down == root_num[2] + 1: 
-                root_num = (row + 1, col, down)
+                root_num = (root_num[0] + 1, root_num[1], down)
+                self.set_highest_path_number(root_num[0], root_num[1], root_num[2])
             elif left == root_num[2] + 1:
-                root_num = (row, col - 1, left)
+                root_num = (root_num[0], root_num[1] - 1, left)
+                self.set_highest_path_number(root_num[0], root_num[1], root_num[2])
             elif right == root_num[2] + 1:
-                root_num = (row, col + 1, right)
+                root_num = (root_num[0], root_num[1] + 1, right)
+                self.set_highest_path_number(root_num[0], root_num[1], root_num[2])
             else:
-                if root_num == highest:
+                if initial_highest == self.get_highest_path_number():
                     return False
-                self.set_highest_path_number(root_num)
                 return True        
 
     def check_set_straight_sequence(self, row: int, col: int):
@@ -154,7 +154,7 @@ class Board:
         direction_to_check = 0
 
         while True:
-            candidate_positions = self.positions
+            candidate_positions = copy.deepcopy(self.positions)
             incrementer = 1
             while direction_to_check == 0 and up_pos[2] != None:
                 if up_pos[2] == 0:
@@ -222,13 +222,33 @@ class Board:
 
     def check_possible_filling(self, root_num: tuple):
         
-        self.set_highest_path_number(root_num)
+        self.set_highest_path_number(root_num[0], root_num[1], root_num[2])
         changed_cpp = True
         changed_css = True
 
         while changed_cpp or changed_css:
-            changed_cpp = self.check_possible_path(root_num[0], root_num[1])
-            changed_css = self.check_set_straight_sequence(root_num[0], root_num[1])
+            changed_cpp = self.check_possible_path(self.get_highest_path_number()[0], self.get_highest_path_number()[1])
+            changed_css = self.check_set_straight_sequence(self.get_highest_path_number()[0], self.get_highest_path_number()[1])
+
+    def check_manhattan_distance_to_next(self, row: int, col: int, num: int):
+        if self.manhattan_list == []:
+            return True
+        pos_to_compare = self.manhattan_list[0]
+        return abs(row - pos_to_compare[0]) + abs(col - pos_to_compare[1]) <= pos_to_compare[2] - num
+
+    def to_string(self):
+        out = ""
+        for r in range(self.size):
+            c = 0
+            for c in range(self.size):
+                out += str(self.positions[r][c])
+                if c != self.size - 1:
+                    out += '\t'
+            if r < self.size - 1:
+                out += '\n'
+
+        return out
+
 
     @staticmethod    
     def parse_instance(filename: str):
@@ -238,20 +258,33 @@ class Board:
         with open(filename, 'r') as file:
             data = file.read()
 
-        size = int(data[0])
+        it = 1
+        size_str = ''
+        for item in data:
+            if item != '\n':
+                it += 1
+                size_str += item
+            else:
+                break
+        size = int(size_str)    
 
         initial_positions = []
         row = []
-        for item in data[2::]:
+        num = ''
+        for item in data[it::]:
             if item != '\t' and item != '\n':
-                row.append(int(item))
-            if item == '\n':
+                num += item
+            elif item == '\t':
+                row.append(int(num))
+                num = ''
+            elif item == '\n':
+                row.append(int(num))
+                num = ''
                 initial_positions.append(row)
                 row = []
 
         return Board(size, initial_positions)
 
-    # TODO: outros metodos da classe
 
 class Numbrix(Problem):
     def __init__(self, board: Board):
@@ -280,13 +313,13 @@ class Numbrix(Problem):
         else:
             (up, down) = board.adjacent_vertical_numbers(highest[0], highest[1])
             (left, right) = board.adjacent_horizontal_numbers(highest[0], highest[1])
-            if up == 0:
+            if up == 0 and board.check_manhattan_distance_to_next(highest[0] - 1, highest[1], highest[2] + 1):
                 actions += ((highest[0] - 1, highest[1], highest[2] + 1), )
-            if down == 0:   
+            if down == 0  and board.check_manhattan_distance_to_next(highest[0] + 1, highest[1], highest[2] + 1):   
                 actions += ((highest[0] + 1, highest[1], highest[2] + 1), )
-            if left == 0:
+            if left == 0  and board.check_manhattan_distance_to_next(highest[0], highest[1] - 1, highest[2] + 1):
                 actions += ((highest[0], highest[1] - 1, highest[2] + 1), )
-            if right == 0:
+            if right == 0  and board.check_manhattan_distance_to_next(highest[0], highest[1] + 1, highest[2] + 1):
                 actions += ((highest[0], highest[1] + 1, highest[2] + 1), )
 
         return actions
@@ -296,17 +329,18 @@ class Numbrix(Problem):
         'state' passado como argumento. A acoo a executar deve ser uma
         das presentes na lista obtida pela execucao de 
         self.actions(state). """
-        new_board = state.get_board()
 
-        # sets the number in the board
+        board = state.get_board()  
+
+        new_board = copy.deepcopy(board)
         new_board.set_number(action[0], action[1], action[2])
-        new_board.check_possible_path()
 
-        # checks if there is a tright line in any of the four directions
-        # if there is, it will update the new_board
-        # if not, nothing is done
-        new_board.check_possible_filling(action)
-        
+        if action[2] < new_board.get_lowest_path_number()[2]:
+            new_board.set_lowest_path_number(action[0], action[1], action[2])
+
+        else:
+            new_board.check_possible_filling(action)
+
         new_state = NumbrixState(new_board)
 
         return new_state
@@ -318,52 +352,46 @@ class Numbrix(Problem):
 
         board = state.get_board()
         current_pos = board.get_lowest_path_number()
+
         if current_pos[2] != 1:
             return False
         else:
             while True:
+
                 (up, down) = board.adjacent_vertical_numbers(current_pos[0], current_pos[1])
                 (left, right) = board.adjacent_horizontal_numbers(current_pos[0], current_pos[1])
 
                 if up == current_pos[2]+1:
-                    current_pos = (current_pos[0]-1, current_pos[0], current_pos[2]+1)
+                    current_pos = (current_pos[0]-1, current_pos[1], current_pos[2]+1)
                 elif down == current_pos[2]+1:
-                    current_pos = (current_pos[0]+1, current_pos[0], current_pos[2]+1)
+                    current_pos = (current_pos[0]+1, current_pos[1], current_pos[2]+1)
                 elif left == current_pos[2]+1:
-                    current_pos = (current_pos[0], current_pos[0]-1, current_pos[2]+1)
+                    current_pos = (current_pos[0], current_pos[1]-1, current_pos[2]+1)
                 elif right == current_pos[2]+1:
-                    current_pos = (current_pos[0], current_pos[0]+1, current_pos[2]+1)
+                    current_pos = (current_pos[0], current_pos[1]+1, current_pos[2]+1)
                 else:
+                    if current_pos[2] == board.get_size() * board.get_size():
+                        return True
                     return False
-                if current_pos[2] == board.get_size() * board.get_size():
-                    return True
                 
-
     def h(self, node: Node):
         """ Funcao heuristica utilizada para a procura A*. """
         # TODO
         pass
     
-    # TODO: outros metodos da classe
-
 
 if __name__ == "__main__":
-    # TODO:
-    # Ler o ficheiro de input de sys.argv[1],
+
+    start_time = time.time()
 
     inputFile = sys.argv[1]
 
     board = Board.parse_instance(inputFile)
-
-    print(board.positions[0][1])
     
     problem = Numbrix(board)
 
     goal_node = breadth_first_tree_search(problem)
 
-    print("Is goal?", problem.goal_test(goal_node.state))
-    print("Solution:\n", goal_node.state.board.to_string(), sep="")
+    print(goal_node.state.get_board().to_string())
 
-    # Usar uma tecnica de procura para resolver a instancia,
-    # Retirar a solucao a partir do no resultante,
-    # Imprimir para o standard output no formato indicado.
+    print("--- %s seconds ---" % (time.time() - start_time))
