@@ -139,54 +139,51 @@ class Board:
    
     def manhattan_interception(self, num: int, lower_pos: tuple, higher_pos: tuple):
         possible_positions = []
-        # parity = None
+        parity = None
 
         if lower_pos != ():
             lower_diff = abs(lower_pos[2] - num)
-            # if lower_diff % 2 == 0:
-            #     if (lower_pos[0] + lower_pos[1]) % 2 == 0:
-            #         parity = 0
-            #     else:
-            #         parity = 1
-            # else:
-            #     if (lower_pos[0] + lower_pos[1]) % 2 != 0:
-            #         parity = 0
-            #     else:
-            #         parity = 1
+            if lower_diff % 2 == 0:
+                if (lower_pos[0] + lower_pos[1]) % 2 == 0:
+                    parity = 0
+                else:
+                    parity = 1
+            else:
+                if (lower_pos[0] + lower_pos[1]) % 2 != 0:
+                    parity = 0
+                else:
+                    parity = 1
 
         if higher_pos != ():
             higher_diff = abs(higher_pos[2] - num)
-            # if parity == None:
-            #     if higher_diff % 2 == 0:
-            #         if (higher_pos[0] + higher_pos[1]) % 2 == 0:
-            #             parity = 0
-            #         else:
-            #             parity = 1
-            #     else:
-            #         if (higher_pos[0] + higher_pos[1]) % 2 != 0:
-            #             parity = 0
-            #         else:
-            #             parity = 1
+            if parity == None:
+                if higher_diff % 2 == 0:
+                    if (higher_pos[0] + higher_pos[1]) % 2 == 0:
+                        parity = 0
+                    else:
+                        parity = 1
+                else:
+                    if (higher_pos[0] + higher_pos[1]) % 2 != 0:
+                        parity = 0
+                    else:
+                        parity = 1
 
         for position in self.empty_positions:
             if lower_pos != () and higher_pos != ():
                 if abs(position[0] - lower_pos[0]) + abs(position[1] - lower_pos[1]) <= lower_diff and abs(position[0] - higher_pos[0]) + abs(position[1] - higher_pos[1]) <= higher_diff:
-                    # if (parity == 0 and (position[0] + position[1]) % 2 == 0) or (parity == 1 and (position[0] + position[1]) % 2 != 0):
-                    #     possible_positions.append(position)
-                    possible_positions.append(position)
+                    if (parity == 0 and (position[0] + position[1]) % 2 == 0) or (parity == 1 and (position[0] + position[1]) % 2 != 0):
+                        possible_positions.append(position)
 
             elif lower_pos == ():
                 if abs(position[0] - higher_pos[0]) + abs(position[1] - higher_pos[1]) <= higher_diff:
-                    # if (parity == 0 and position[0] + position[1] % 2 == 0) or parity == 1 and position[0] + position[1] % 2 != 0:
-                    #     possible_positions.append(position)
-                    possible_positions.append(position)
+                    if (parity == 0 and (position[0] + position[1]) % 2 == 0) or parity == 1 and (position[0] + position[1]) % 2 != 0:
+                        possible_positions.append(position)
 
             elif higher_pos == ():
                 if abs(position[0] - lower_pos[0]) + abs(position[1] - lower_pos[1]) <= lower_diff:
-                    # if (parity == 0 and position[0] + position[1] % 2 == 0) or parity == 1 and position[0] + position[1] % 2 != 0:
-                        # possible_positions.append(position)
-                    possible_positions.append(position)
-
+                    if (parity == 0 and (position[0] + position[1]) % 2 == 0) or parity == 1 and (position[0] + position[1]) % 2 != 0:
+                        possible_positions.append(position)
+        
         return possible_positions
     
     def to_string(self):
@@ -284,7 +281,7 @@ class Numbrix(Problem):
 
         new_board = copy.deepcopy(state.get_board())
         new_board.set_number_on_board(action[0], action[1], action[2])
-        new_board.coordinate_on_off_dict()        
+        new_board.coordinate_on_off_dict()      
 
         new_state = NumbrixState(new_board)
 
@@ -296,7 +293,7 @@ class Numbrix(Problem):
         estao preenchidas com uma sequencia de numeros adjacentes. """
 
         board = state.get_board()
-        key = board.get_on_board_key(1)
+        key = board.get_on_board_key(1)  
 
         if key == None:
             return False
@@ -328,8 +325,6 @@ class Numbrix(Problem):
     
 
 if __name__ == "__main__":
-
-    start_time = time.time()
 
     inputFile = sys.argv[1]
 
