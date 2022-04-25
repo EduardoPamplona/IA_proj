@@ -29,14 +29,12 @@ class NumbrixState:
 class Board:
     """ Representacao interna de um tabuleiro de Numbrix. """
 
-    def __init__(self, size: int, initial_positions: list, empty_positions: list, on_board: dict, off_board: dict):
+    def __init__(self, size: int, initial_positions, on_board: dict, off_board: dict):
         """ O construtor especifica o estado inicial. """
         self.size = size
         self.positions = initial_positions
-        self.empty_positions = empty_positions
         self.on_board = on_board
         self.off_board = off_board
-        self.next_off_board_key = 0
         self.coordinate_on_off_dict()
 
     def get_size(self):
@@ -46,14 +44,8 @@ class Board:
         """ Devolve o valor na respetiva posicao do tabuleiro. """
         return self.positions[row][col]
 
-    def set_number_on_board(self, row: int, col: int, num: int):
-        self.positions[row][col] = num   
-        self.on_board[(row, col)] = num
-        del self.off_board[num]
-        self.empty_positions.remove((row, col))
-
-    def set_number_off_board(self, num: int, possible_positions: list):
-        self.off_board[num] = possible_positions
+    def set_number(self, row: int, col: int, num: int):
+        self.positions[row][col] = num    
     
     def adjacent_vertical_numbers(self, row: int, col: int):
         """ Devolve os valores imediatamente abaixo e acima, 
@@ -84,111 +76,58 @@ class Board:
     def set_positions(self, positions):
         self.positions = positions
 
-    def get_on_board_key(self, value: int):
-        for key, val in self.on_board.items():
-            if val == value:
-                return key
-        return None
-
     def coordinate_on_off_dict(self):
+        board_changed = True
         prev_value = ()
         next_value = ()
         off_board_index = 0
-        self.next_off_board_key = 0
         
-        while True:
-
-            sorted_on_board = dict(sorted(self.on_board.items(), key = lambda item: item[1]))
+        while board_changed or off_board_index < len(self.off_board):
+            if board_changed:
+                sorted_on_board = dict(sorted(self.on_board.items(), key = lambda item: item[1]))
             off_board_index = 0
-
             for key in self.off_board:
                 for value in sorted_on_board.values():
                     if value < key:
-                        (prev_row, prev_col) = self.get_on_board_key(value)
+                        (prev_row, prev_col) = get_key(value)
                         prev_value = (prev_row, prev_col, value)
                     else:
-                        (next_row, next_col) = self.get_on_board_key(value)
+                        (next_row, next_col) = get_key(value)
                         next_value = (next_row, next_col, value)
                         break   
-                
                 possible_positions = self.manhattan_interception(key, prev_value, next_value)
-
                 if len(possible_positions) == 1:
-                    self.set_number_on_board(possible_positions[0][0], possible_positions[0][1], key)
-
-                    if self.next_off_board_key == key:
-                        self.next_off_board_key = 0
-
-                    if len(self.off_board) == 0:
-                        return
+                    sorted_on_board[possible_positions[0]] = key
+                    del self.off_board[key]
+                    self.set_number(possible_positions[0][0], possible_positions[0][1], key)
+                    board_changed = True
                     break
-
                 else:
-                    if self.next_off_board_key == 0:
-                        self.next_off_board_key = key
+                    self.off_board[key] = possible_positions
+                    board_changed = False
+                off_board_index += 1  
+        self.on_board = sorted_on_board              
 
-                    if len(possible_positions) < len(self.off_board[self.next_off_board_key]):
-                        self.next_off_board_key = key
-
-                    self.set_number_off_board(key, possible_positions)
-                    off_board_index += 1
-
-                    if off_board_index == len(self.off_board):
-                        return                
-           
-   
+        
     def manhattan_interception(self, num: int, lower_pos: tuple, higher_pos: tuple):
         possible_positions = []
-        # parity = None
 
-        if lower_pos != ():
-            lower_diff = abs(lower_pos[2] - num)
-            # if lower_diff % 2 == 0:
-            #     if (lower_pos[0] + lower_pos[1]) % 2 == 0:
-            #         parity = 0
-            #     else:
-            #         parity = 1
-            # else:
-            #     if (lower_pos[0] + lower_pos[1]) % 2 != 0:
-            #         parity = 0
-            #     else:
-            #         parity = 1
+        (lower_up, lower_down) = self.adjacent_vertical_numbers(lower_pos[0], lower_pos[1])
+        (lower_left, lower_right) = self.adjacent_horizontal_numbers(lower_pos[0], lower_pos[1])
 
-        if higher_pos != ():
-            higher_diff = abs(higher_pos[2] - num)
-            # if parity == None:
-            #     if higher_diff % 2 == 0:
-            #         if (higher_pos[0] + higher_pos[1]) % 2 == 0:
-            #             parity = 0
-            #         else:
-            #             parity = 1
-            #     else:
-            #         if (higher_pos[0] + higher_pos[1]) % 2 != 0:
-            #             parity = 0
-            #         else:
-            #             parity = 1
+        (higher_up, higher_down) = self.adjacent_vertical_numbers(higher_pos[0], higher_pos[1])
+        (higher_left, higher_right) = self.adjacent_horizontal_numbers(higher_pos[0], higher_pos[1])
 
-        for position in self.empty_positions:
-            if lower_pos != () and higher_pos != ():
-                if abs(position[0] - lower_pos[0]) + abs(position[1] - lower_pos[1]) <= lower_diff and abs(position[0] - higher_pos[0]) + abs(position[1] - higher_pos[1]) <= higher_diff:
-                    # if (parity == 0 and (position[0] + position[1]) % 2 == 0) or (parity == 1 and (position[0] + position[1]) % 2 != 0):
-                    #     possible_positions.append(position)
-                    possible_positions.append(position)
+        lower_diff = abs(lower_pos[2] - num)
+        higher_diff = abs(higher_pos[2] - num)
 
-            elif lower_pos == ():
-                if abs(position[0] - higher_pos[0]) + abs(position[1] - higher_pos[1]) <= higher_diff:
-                    # if (parity == 0 and position[0] + position[1] % 2 == 0) or parity == 1 and position[0] + position[1] % 2 != 0:
-                    #     possible_positions.append(position)
-                    possible_positions.append(position)
-
-            elif higher_pos == ():
-                if abs(position[0] - lower_pos[0]) + abs(position[1] - lower_pos[1]) <= lower_diff:
-                    # if (parity == 0 and position[0] + position[1] % 2 == 0) or parity == 1 and position[0] + position[1] % 2 != 0:
-                        # possible_positions.append(position)
-                    possible_positions.append(position)
-
+        if lower_diff % 2 != 0:
+            for i in range(lower_diff / 2):
+                
+                   
         return possible_positions
     
+
     def to_string(self):
         out = ""
         for r in range(self.size):
@@ -201,6 +140,7 @@ class Board:
                 out += '\n'
 
         return out
+
 
     @staticmethod    
     def parse_instance(filename: str):
@@ -230,7 +170,6 @@ class Board:
         c = 0
 
         initial_positions = []
-        empty_positions = []
         row = []
         num = ''
         for item in data[it::]:
@@ -240,9 +179,7 @@ class Board:
                 row.append(int(num))
                 if int(num) != 0:
                     on_board[(r, c)] = int(num)
-                    del off_board[int(num)]  
-                else:
-                    empty_positions.append((r, c), )    
+                    del off_board[int(num)]
                 num = ''
                 c += 1
             elif item == '\n':
@@ -250,15 +187,13 @@ class Board:
                 if int(num) != 0:
                     on_board[(r, c)] = int(num)
                     del off_board[int(num)]
-                else:
-                    empty_positions.append((r, c), )    
                 num = ''
                 initial_positions.append(row)
                 r += 1
                 c = 0
-                row = []        
+                row = []       
 
-        return Board(size, initial_positions, empty_positions, on_board, off_board)
+        return Board(size, initial_positions, on_board, off_board)
 
 
 class Numbrix(Problem):
@@ -268,12 +203,6 @@ class Numbrix(Problem):
 
     def actions(self, state: NumbrixState):
         board = state.get_board()
-        actions = []
-
-        if board.off_board.get(board.next_off_board_key) != None:
-            for position in board.off_board[board.next_off_board_key]:
-                actions.append((position[0], position[1], board.next_off_board_key))
-
         return actions
 
     def result(self, state: NumbrixState, action):
@@ -282,9 +211,10 @@ class Numbrix(Problem):
         das presentes na lista obtida pela execucao de 
         self.actions(state). """
 
-        new_board = copy.deepcopy(state.get_board())
-        new_board.set_number_on_board(action[0], action[1], action[2])
-        new_board.coordinate_on_off_dict()        
+        board = state.get_board()  
+
+        new_board = copy.deepcopy(board)
+        new_board.set_number(action[0], action[1], action[2])
 
         new_state = NumbrixState(new_board)
 
@@ -296,13 +226,11 @@ class Numbrix(Problem):
         estao preenchidas com uma sequencia de numeros adjacentes. """
 
         board = state.get_board()
-        key = board.get_on_board_key(1)
+        current_pos = board.get_lowest_number_put()
 
-        if key == None:
+        if current_pos[2] != 1:
             return False
         else:
-            current_pos = (key[0], key[1], 1)
-
             while True:
 
                 (up, down) = board.adjacent_vertical_numbers(current_pos[0], current_pos[1])
@@ -334,9 +262,11 @@ if __name__ == "__main__":
     inputFile = sys.argv[1]
 
     board = Board.parse_instance(inputFile)
+    
+    # problem = Numbrix(board)
 
-    problem = Numbrix(board)
+    # goal_node = breadth_first_tree_search(problem)
 
-    goal_node = depth_first_tree_search(problem)
+    # print(goal_node.state.get_board().to_string())
 
-    print(goal_node.state.get_board().to_string())
+    # print("--- %s seconds ---" % (time.time() - start_time))
