@@ -1,7 +1,7 @@
-import copy
 import sys
-from search import Problem, Node, depth_first_tree_search, breadth_first_tree_search, astar_search, recursive_best_first_search
 import time
+import copy
+from search import Problem, Node, depth_first_tree_search, breadth_first_tree_search, astar_search, greedy_search, recursive_best_first_search
 
 # numbrix.py: Template para implementacao do projeto de Inteligencia Artificial 2021/2022.
 # Devem alterar as classes e funcoes neste ficheiro de acordo com as instrucoes do enunciado.
@@ -29,14 +29,15 @@ class NumbrixState:
 class Board:
     """ Representacao interna de um tabuleiro de Numbrix. """
 
-    def __init__(self, size: int, initial_positions: list, empty_positions: list, on_board: dict, off_board: dict):
+    def __init__(self, size: int, initial_positions: list, even_empty_positions: list, odd_empty_positions: list, on_board: dict, off_board: dict):
         """ O construtor especifica o estado inicial. """
         self.size = size
         self.positions = initial_positions
-        self.empty_positions = empty_positions
+        self.even_empty_positions = even_empty_positions
+        self.odd_empty_positions = odd_empty_positions
         self.on_board = on_board
         self.off_board = off_board
-        self.next_off_board_key = 0
+        self.next_off_board_key = 0 
         self.coordinate_on_off_dict()
 
     def get_size(self):
@@ -50,7 +51,10 @@ class Board:
         self.positions[row][col] = num   
         self.on_board[(row, col)] = num
         del self.off_board[num]
-        self.empty_positions.remove((row, col))
+        if (row + col) % 2 == 0:
+            self.even_empty_positions.remove((row, col))
+        else:
+            self.odd_empty_positions.remove((row, col))   
 
     def set_number_off_board(self, num: int, possible_positions: list):
         self.off_board[num] = possible_positions
@@ -81,9 +85,6 @@ class Board:
             right = self.get_number(row, col + 1)
         return (left, right)
 
-    def set_positions(self, positions):
-        self.positions = positions
-
     def get_on_board_key(self, value: int):
         for key, val in self.on_board.items():
             if val == value:
@@ -111,7 +112,7 @@ class Board:
                         next_value = (next_row, next_col, value)
                         break   
                 
-                possible_positions = self.manhattan_interception(key, prev_value, next_value)
+                possible_positions = self.possible_actions_restrictions(key, prev_value, next_value)
 
                 if len(possible_positions) == 1:
                     self.set_number_on_board(possible_positions[0][0], possible_positions[0][1], key)
@@ -137,7 +138,7 @@ class Board:
                         return                
            
    
-    def manhattan_interception(self, num: int, lower_pos: tuple, higher_pos: tuple):
+    def possible_actions_restrictions(self, num: int, lower_pos: tuple, higher_pos: tuple):
         possible_positions = []
         parity = None
 
@@ -168,21 +169,38 @@ class Board:
                     else:
                         parity = 1
 
-        for position in self.empty_positions:
-            if lower_pos != () and higher_pos != ():
-                if abs(position[0] - lower_pos[0]) + abs(position[1] - lower_pos[1]) <= lower_diff and abs(position[0] - higher_pos[0]) + abs(position[1] - higher_pos[1]) <= higher_diff:
-                    if (parity == 0 and (position[0] + position[1]) % 2 == 0) or (parity == 1 and (position[0] + position[1]) % 2 != 0):
-                        possible_positions.append(position)
+        if parity == 0:
+            for position in self.even_empty_positions:
+                if lower_pos != () and higher_pos != ():
+                    if abs(position[0] - lower_pos[0]) + abs(position[1] - lower_pos[1]) <= lower_diff and abs(position[0] - higher_pos[0]) + abs(position[1] - higher_pos[1]) <= higher_diff:
+                        if (position[0] + position[1]) % 2 == 0:
+                            possible_positions.append(position)
 
-            elif lower_pos == ():
-                if abs(position[0] - higher_pos[0]) + abs(position[1] - higher_pos[1]) <= higher_diff:
-                    if (parity == 0 and (position[0] + position[1]) % 2 == 0) or parity == 1 and (position[0] + position[1]) % 2 != 0:
-                        possible_positions.append(position)
+                elif lower_pos == ():
+                    if abs(position[0] - higher_pos[0]) + abs(position[1] - higher_pos[1]) <= higher_diff:
+                        if (position[0] + position[1]) % 2 == 0:
+                            possible_positions.append(position)
 
-            elif higher_pos == ():
-                if abs(position[0] - lower_pos[0]) + abs(position[1] - lower_pos[1]) <= lower_diff:
-                    if (parity == 0 and (position[0] + position[1]) % 2 == 0) or parity == 1 and (position[0] + position[1]) % 2 != 0:
-                        possible_positions.append(position)
+                elif higher_pos == ():
+                    if abs(position[0] - lower_pos[0]) + abs(position[1] - lower_pos[1]) <= lower_diff:
+                        if (position[0] + position[1]) % 2 == 0:
+                            possible_positions.append(position)  
+        else:
+            for position in self.odd_empty_positions:
+                if lower_pos != () and higher_pos != ():
+                    if abs(position[0] - lower_pos[0]) + abs(position[1] - lower_pos[1]) <= lower_diff and abs(position[0] - higher_pos[0]) + abs(position[1] - higher_pos[1]) <= higher_diff:
+                        if (position[0] + position[1]) % 2 != 0:
+                            possible_positions.append(position)
+
+                elif lower_pos == ():
+                    if abs(position[0] - higher_pos[0]) + abs(position[1] - higher_pos[1]) <= higher_diff:
+                        if (position[0] + position[1]) % 2 != 0:
+                            possible_positions.append(position)
+
+                elif higher_pos == ():
+                    if abs(position[0] - lower_pos[0]) + abs(position[1] - lower_pos[1]) <= lower_diff:
+                        if (position[0] + position[1]) % 2 != 0:
+                            possible_positions.append(position)                                  
         
         return possible_positions
     
@@ -227,7 +245,8 @@ class Board:
         c = 0
 
         initial_positions = []
-        empty_positions = []
+        even_empty_positions = []
+        odd_empty_positions = []
         row = []
         num = ''
         for item in data[it::]:
@@ -239,7 +258,10 @@ class Board:
                     on_board[(r, c)] = int(num)
                     del off_board[int(num)]  
                 else:
-                    empty_positions.append((r, c), )    
+                    if (r + c) % 2 == 0:
+                        even_empty_positions.append((r, c), )
+                    else:
+                        odd_empty_positions.append((r, c), )
                 num = ''
                 c += 1
             elif item == '\n':
@@ -248,14 +270,17 @@ class Board:
                     on_board[(r, c)] = int(num)
                     del off_board[int(num)]
                 else:
-                    empty_positions.append((r, c), )    
+                    if (r + c) % 2 == 0:
+                        even_empty_positions.append((r, c), )
+                    else:
+                        odd_empty_positions.append((r, c), )   
                 num = ''
                 initial_positions.append(row)
                 r += 1
                 c = 0
                 row = []        
 
-        return Board(size, initial_positions, empty_positions, on_board, off_board)
+        return Board(size, initial_positions, even_empty_positions, odd_empty_positions, on_board, off_board)
 
 
 class Numbrix(Problem):
@@ -279,13 +304,14 @@ class Numbrix(Problem):
         das presentes na lista obtida pela execucao de 
         self.actions(state). """
 
-        new_board = copy.deepcopy(state.get_board())
+        board = state.get_board()
+
+        new_board = copy.deepcopy(board)          
+
         new_board.set_number_on_board(action[0], action[1], action[2])
-        new_board.coordinate_on_off_dict()      
+        new_board.coordinate_on_off_dict() 
 
-        new_state = NumbrixState(new_board)
-
-        return new_state
+        return NumbrixState(new_board)
 
     def goal_test(self, state: NumbrixState):
         """ Retorna True se e so se o estado passado como argumento e
@@ -293,45 +319,37 @@ class Numbrix(Problem):
         estao preenchidas com uma sequencia de numeros adjacentes. """
 
         board = state.get_board()
-        key = board.get_on_board_key(1)  
-
-        if key == None:
-            return False
-        else:
-            current_pos = (key[0], key[1], 1)
-
-            while True:
-
-                (up, down) = board.adjacent_vertical_numbers(current_pos[0], current_pos[1])
-                (left, right) = board.adjacent_horizontal_numbers(current_pos[0], current_pos[1])
-
-                if up == current_pos[2]+1:
-                    current_pos = (current_pos[0]-1, current_pos[1], current_pos[2]+1)
-                elif down == current_pos[2]+1:
-                    current_pos = (current_pos[0]+1, current_pos[1], current_pos[2]+1)
-                elif left == current_pos[2]+1:
-                    current_pos = (current_pos[0], current_pos[1]-1, current_pos[2]+1)
-                elif right == current_pos[2]+1:
-                    current_pos = (current_pos[0], current_pos[1]+1, current_pos[2]+1)
-                else:
-                    if current_pos[2] == board.get_size() * board.get_size():
-                        return True
-                    return False
+        size = board.size
+        return len(board.on_board) == size * size
                 
     def h(self, node: Node):
         """ Funcao heuristica utilizada para a procura A*. """
-        # TODO
-        pass
-    
+        board = node.state.get_board()
+        size = board.size
+        count = 0
+        longest_path = 0
+
+        for num in range(size * size):
+            if num + 1 not in board.on_board.values():
+                count += 1
+            else:
+                if count > longest_path:
+                    longest_path = count
+                count = 0    
+        return size * size - longest_path    
 
 if __name__ == "__main__":
 
     inputFile = sys.argv[1]
+    start_time = time.time()
 
     board = Board.parse_instance(inputFile)
 
     problem = Numbrix(board)
 
-    goal_node = depth_first_tree_search(problem)
+    goal_node = greedy_search(problem)
+    end_time = time.time()
 
     print(goal_node.state.get_board().to_string())
+    total_time = end_time - start_time
+    print("Time: ", total_time)
